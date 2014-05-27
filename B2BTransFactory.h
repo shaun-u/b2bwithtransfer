@@ -6,6 +6,11 @@
 class B2BTransFactory :
   public AmSessionFactory, public AmDynInvokeFactory, public AmDynInvoke
 {
+  /**
+   * Dynamic invoke instance
+   */
+  static B2BTransFactory* _instance;
+  
   public:
   CallTransFactory(const std::string& applicationName);
   
