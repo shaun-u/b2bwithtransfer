@@ -1,7 +1,9 @@
 #include "B2BTransFactory.h"
 #include "B2BTransDialog.h"
+#include "B2BTransSession.h"
 
 #include "log.h"
+
 #include <sstream>
 #include <memory>
 #include <iterator>
@@ -42,9 +44,9 @@ AmSession* B2BTransFactory::onInvite(const AmSipRequest& req)
   
   std::auto_ptr< B2BTransDialog > dialog(new B2BTransDialog(req.callid));
 
-  dialogs[dialog->getID()] = dialog.release();
+  dialogs[dialog->getID()] = dialog.get();
   
-  return NULL;
+  return dialog.release()->begin();
 }
 
 AmDynInvoke* B2BTransFactory::getInstance()
@@ -80,7 +82,7 @@ void B2BTransFactory::invoke(const string& method, const AmArg& args, AmArg& ret
 const std::string B2BTransFactory::listDialogs() const
 {
   std::ostringstream os;
-  WARN("THIS DOES NOT SCALE; NOR IS IT THREAD SAFE");
+  //THIS DOES NOT SCALE; NOR IS IT THREAD SAFE
 
   if(dialogs.size() == 0)
   {
