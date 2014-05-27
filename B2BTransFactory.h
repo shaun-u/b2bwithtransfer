@@ -12,7 +12,7 @@ class B2BTransFactory :
   static B2BTransFactory* _instance;
   
   public:
-  CallTransFactory(const std::string& applicationName);
+  B2BTransFactory(const std::string& applicationName);
   
   int onLoad();
 
