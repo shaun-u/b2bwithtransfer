@@ -3,14 +3,17 @@
 
 #include "AmApi.h"
 
+#include <map>
+#include <string>
+
+class B2BTransDialog;
+
 class B2BTransFactory :
   public AmSessionFactory, public AmDynInvokeFactory, public AmDynInvoke
 {
-  /**
-   * Dynamic invoke instance
-   */
-  static B2BTransFactory* _instance;
-  
+  typedef std::map< std::string,B2BTransDialog* > DialogsType;
+  static DialogsType dialogs;//NOT THREAD SAFE!
+
   public:
   B2BTransFactory(const std::string& applicationName);
   
@@ -28,6 +31,8 @@ class B2BTransFactory :
   AmDynInvoke* getInstance();
   void invoke(const string& method, const AmArg& args, AmArg& ret);
 
+  private:
+  const std::string listDialogs() const;
   
 };
 
