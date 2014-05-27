@@ -12,7 +12,7 @@ B2BTransFactory* B2BTransFactory::_instance=0;
 B2BTransFactory::B2BTransFactory(const std::string& applicationName)
   : AmSessionFactory(applicationName), AmDynInvokeFactory(applicationName)
 {
-  DBG("constructing factory instance");
+  DBG("constructing factory instance: applicationName=%s",applicationName.c_str());
   if(_instance != 0)
     ERROR("factory instance already exists; overwriting");
   _instance = this;
