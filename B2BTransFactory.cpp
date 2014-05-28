@@ -14,6 +14,7 @@ EXPORT_SESSION_FACTORY(B2BTransFactory,MOD_NAME);
 EXPORT_PLUGIN_CLASS_FACTORY(B2BTransFactory,MOD_NAME);
 
 B2BTransFactory::DialogsType B2BTransFactory::dialogs;
+AmMutex B2BTransFactory::dialogsLock;
 
 B2BTransFactory::B2BTransFactory(const std::string& applicationName)
   : AmSessionFactory(applicationName), AmDynInvokeFactory(applicationName)
@@ -46,8 +47,12 @@ AmSession* B2BTransFactory::onInvite(const AmSipRequest& req)
 
   INFO("%s",os.str().c_str());
 
+  dialogsLock.lock();
+
   dialogs[dialog->getID()] = dialog.get();
   
+  dialogsLock.unlock();
+
   return dialog.release()->begin();
 }
 

@@ -35,18 +35,27 @@ void B2BTransDialog::onStarted(B2BTransSession* sess)
   std::ostringstream os;
   os << "onStarted sess=" << sess;
   os << "; dialog=" << this;
+  os << std::endl;
+  DBG("%s",os.str().c_str());
 
   sessionsLock.lock();
 
   if(sessions.size() == 1 && sessions[FROM] == sess)
   {
+    DBG("from leg connected; play ringtone");   
     sess->playRinging(false);
+    
+    DBG("calling to leg");
+
+
+    std::auto_ptr< B2BTransSession > toLeg(new B2BTransSession());
+    toLeg->addListener(this);
+    sessions[TO] = toLeg.get();  
+    
+    sess->postEvent(/*give ownership*/new B2BDialoutEvent(toLeg.release()));
   }
   
   sessionsLock.unlock();
-
-  os << std::endl;
-  DBG("%s",os.str().c_str());
 }
 
 void B2BTransDialog::onStopped(B2BTransSession* sess)

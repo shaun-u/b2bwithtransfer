@@ -12,7 +12,9 @@ class B2BTransFactory :
   public AmSessionFactory, public AmDynInvokeFactory, public AmDynInvoke
 {
   typedef std::map< std::string,B2BTransDialog* > DialogsType;
-  static DialogsType dialogs;//NOT THREAD SAFE!
+  static DialogsType dialogs;
+  static AmMutex dialogsLock;
+
 
   public:
   B2BTransFactory(const std::string& applicationName);
