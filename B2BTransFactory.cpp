@@ -38,11 +38,13 @@ AmSession* B2BTransFactory::onInvite(const AmSipRequest& req)
   os << "new dialog=" << req.callid << "; ";
   os << "from=" << req.from << "; ";
   os << "to=" << req.to << "; ";
+  
+  std::auto_ptr< B2BTransDialog > dialog(new B2BTransDialog(req.callid));
+
+  os << "dialog=" << dialog.get() << "; ";
   os << "this=" << this << std::endl;
 
   INFO("%s",os.str().c_str());
-  
-  std::auto_ptr< B2BTransDialog > dialog(new B2BTransDialog(req.callid));
 
   dialogs[dialog->getID()] = dialog.get();
   
