@@ -14,7 +14,7 @@ B2BTransDialog::B2BTransDialog(const std::string& id)
   os << "created dialog=" << this << "; dialogID=" << id << std::endl;
   DBG("%s",os.str().c_str());
 
-  std::auto_ptr< B2BTransSession > session(new B2BTransSession(bridge.get()));
+  std::auto_ptr< B2BTransSession > session(new B2BTransSession());
   session->addListener(this);
   sessions[FROM] = session.release();  
 }
@@ -46,7 +46,7 @@ void B2BTransDialog::onStarted(B2BTransSession* sess)
     
     sess->playRinging();
     
-    std::auto_ptr< B2BTransSession > toLeg(new B2BTransSession(bridge.get()));
+    std::auto_ptr< B2BTransSession > toLeg(new B2BTransSession());
     toLeg->addListener(this);
     sessions[TO] = toLeg.get();  
     
@@ -58,7 +58,6 @@ void B2BTransDialog::onStarted(B2BTransSession* sess)
     DBG("%s",os.str().c_str());
 
     bridge->connectSession(sess);
-    //sess->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
     sessions[FROM]->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
   }
   
@@ -70,13 +69,22 @@ void B2BTransDialog::onStopped(B2BTransSession* sess)
   std::ostringstream os;
   os << "onStopped sess=" << sess;
   os << "; dialog=" << this;
+  os << "; terminating all sessions" << std::endl;
+  DBG("%s",os.str().c_str());
   
   sessionsLock.lock();
+  
+  for(SessionsIter s = sessions.begin(); s != sessions.end(); ++s)
+  {
+    if(s->second == sess)
+      continue;
+    
+    s->second->postEvent(/*give ownership*/new B2BTerminateEvent());
+  }
+
+  sessions.clear();
 
   sessionsLock.unlock();
-
-  os << std::endl;
-  DBG("%s",os.str().c_str());
 }
 
 const std::string& B2BTransDialog::getID() const

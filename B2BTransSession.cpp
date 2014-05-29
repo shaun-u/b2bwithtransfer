@@ -10,8 +10,8 @@
 
 #include <sstream>
 
-B2BTransSession::B2BTransSession(AmSessionAudioConnector* audioBridge)
-  : bridge(audioBridge), ringTone(new AmRingTone(0,2000,4000,440,480))
+B2BTransSession::B2BTransSession()
+  : ringTone(new AmRingTone(0,2000,4000,440,480))
 {
   std::ostringstream os;
   os << "creating session=" << this << std::endl;
@@ -105,25 +105,19 @@ void B2BTransSession::call(const std::string& callid, const std::string& to,
 void B2BTransSession::onSessionStart(const AmSipRequest& req)
 {
   std::ostringstream os;
-  os << "started session=" << this << std::endl;
+  os << "started (via SIP Request) session=" << this << std::endl;
   DBG("%s",os.str().c_str());
 
-  for(ListenerIter l = listeners.begin(); l != listeners.end(); ++l)
-  {
-    (*l)->onStarted(this);
-  }
+  onCommonStart();
 }
 
 void B2BTransSession::onSessionStart(const AmSipReply& reply)
 {
   std::ostringstream os;
-  os << "started session=" << this << std::endl;
+  os << "started (via SIP Response) session=" << this << std::endl;
   DBG("%s",os.str().c_str());
 
-  for(ListenerIter l = listeners.begin(); l != listeners.end(); ++l)
-  {
-    (*l)->onStarted(this);
-  }
+  onCommonStart();
 }
 
 void B2BTransSession::onBye(const AmSipRequest& req)
@@ -132,19 +126,13 @@ void B2BTransSession::onBye(const AmSipRequest& req)
   os << "bye session=" << this << std::endl;
   DBG("%s",os.str().c_str());
 
+  for(ListenerIter l = listeners.begin(); l != listeners.end(); ++l)
+  {
+    (*l)->onStopped(this);
+  }
+
   //AmSession is stopped in superclass
   AmSession::onBye(req);
-}
-
-void B2BTransSession::onSipReply(const AmSipReply& reply, int old_dlg_status, const string& trans_method)
-{
-  if(dlg.getStatus() == AmSipDialog::Connected)
-  {
-    //setNegotiateOnReply(true);//automatically accept audio
-    //setInOut(NULL,ringTone.get());
-  }
-  
-  AmSession::onSipReply(reply,old_dlg_status,trans_method);
 }
 
 /**
@@ -185,7 +173,30 @@ void B2BTransSession::process(AmEvent* evt)
     return;
   }
 
+  B2BTerminateEvent* tevt = dynamic_cast< B2BTerminateEvent* >(evt);
+  if(tevt)
+  {
+    std::ostringstream os;
+    os << "processing B2BTerminateEvent; this=" << this;
+    
+    if(tevt->event_id == DoTerminate)
+    {
+      os << "; DoTerminate" << std::endl;
+      DBG("%s",os.str().c_str());
+      
+      if(!getDetached())
+      {
+	AmMediaProcessor::instance()->removeSession(this);
+      }
 
+      setInOut(NULL,NULL);
+
+      if(dlg.getStatus() == AmSipDialog::Connected)
+	dlg.bye();
+      setStopped();
+    }    
+    return;
+  }
   AmSession::process(evt);
 }
 
@@ -221,4 +232,12 @@ std::string B2BTransSession::getRUri(const std::string& uri)
   //DBG("AS YET UNUSED Reconstructed RUri=%s",os.str().c_str());
   //return parser.uri;
   return os.str();
+}
+
+void B2BTransSession::onCommonStart()
+{
+  for(ListenerIter l = listeners.begin(); l != listeners.end(); ++l)
+  {
+    (*l)->onStarted(this);
+  }
 }

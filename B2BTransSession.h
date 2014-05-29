@@ -15,11 +15,10 @@ class B2BTransSession : public AmSession
   typedef std::vector< B2BTransSessionListener* > ListenerType;
   ListenerType listeners;
   typedef ListenerType::iterator ListenerIter; 
-  AmSessionAudioConnector* bridge;
 
   public:
   
-  B2BTransSession(AmSessionAudioConnector* audioBridge);
+  B2BTransSession();
   virtual ~B2BTransSession();
 
   void addListener(B2BTransSessionListener* listener);
@@ -35,16 +34,16 @@ class B2BTransSession : public AmSession
   void onSessionStart(const AmSipRequest& req);
   void onSessionStart(const AmSipReply& reply);
   void onBye(const AmSipRequest& req);
-  void onSipReply(const AmSipReply& reply, int old_dlg_status, const string& trans_method);
   void process(AmEvent* evt);
 
   private:
   std::string getRUri(const std::string& uri);
+  void onCommonStart();
 };
 
 enum B2BDialoutAction
 {
-  DoConnect = 100, DoBridge
+  DoConnect = 100, DoBridge = 110, DoTerminate = 120
 };
 
 struct B2BDialoutEvent : public AmEvent
@@ -57,6 +56,11 @@ struct B2BBridgeAudioEvent : public AmEvent
 {
   AmSessionAudioConnector* bridge;
   B2BBridgeAudioEvent(AmSessionAudioConnector* audioBridge) : AmEvent(DoBridge), bridge(audioBridge) {}
+};
+
+struct B2BTerminateEvent : public AmEvent
+{
+   B2BTerminateEvent() : AmEvent(DoTerminate) {}
 };
 
 #endif //_B2BTRANSSESSION_H_

@@ -20,6 +20,7 @@ class B2BTransDialog : public B2BTransSessionListener
 
   //WHO MANAGES THE LIFECYCLE OF AMSESSIONS?
   typedef std::map< RoleIDs,B2BTransSession* > SessionsType;
+  typedef SessionsType::iterator SessionsIter;
   SessionsType sessions;
   AmMutex sessionsLock;
 
