@@ -1,19 +1,20 @@
 #include "B2BTransDialog.h"
 #include "B2BTransSession.h"
 
+#include "AmB2ABSession.h"
 #include "log.h"
 
 #include <memory>
 #include <sstream>
 
 B2BTransDialog::B2BTransDialog(const std::string& id)
-  : dialogID(id)
+  : dialogID(id), bridge(new AmSessionAudioConnector())
 {
   std::ostringstream os;
   os << "created dialog=" << this << "; dialogID=" << id << std::endl;
   DBG("%s",os.str().c_str());
 
-  std::auto_ptr< B2BTransSession > session(new B2BTransSession());
+  std::auto_ptr< B2BTransSession > session(new B2BTransSession(bridge.get()));
   session->addListener(this);
   sessions[FROM] = session.release();  
 }
@@ -35,24 +36,30 @@ void B2BTransDialog::onStarted(B2BTransSession* sess)
   std::ostringstream os;
   os << "onStarted sess=" << sess;
   os << "; dialog=" << this;
-  os << std::endl;
-  DBG("%s",os.str().c_str());
 
   sessionsLock.lock();
 
   if(sessions.size() == 1 && sessions[FROM] == sess)
   {
-    DBG("from leg connected; play ringtone");   
-    sess->playRinging(false);
+    os << "'from' leg connected; play ringtone and connect 'to' leg" << std::endl;
+    DBG("%s",os.str().c_str());
     
-    DBG("calling to leg");
-
-
-    std::auto_ptr< B2BTransSession > toLeg(new B2BTransSession());
+    sess->playRinging();
+    
+    std::auto_ptr< B2BTransSession > toLeg(new B2BTransSession(bridge.get()));
     toLeg->addListener(this);
     sessions[TO] = toLeg.get();  
     
     sess->postEvent(/*give ownership*/new B2BDialoutEvent(toLeg.release()));
+  }
+  else if(sessions.size() == 2 && (sessions[TO] == sess))
+  {
+    os << "'to' leg connected; bridge audio between 'to' and 'from' legs" << std::endl;
+    DBG("%s",os.str().c_str());
+
+    bridge->connectSession(sess);
+    //sess->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
+    sessions[FROM]->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
   }
   
   sessionsLock.unlock();

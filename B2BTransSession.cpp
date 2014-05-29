@@ -4,12 +4,14 @@
 #include "AmRingTone.h"
 #include "AmUriParser.h"
 #include "AmSessionContainer.h"
+#include "AmMediaProcessor.h"
+#include "AmB2ABSession.h"
 #include "log.h"
 
 #include <sstream>
 
-B2BTransSession::B2BTransSession()
-  : ringTone(new AmRingTone(0,2000,4000,440,480))
+B2BTransSession::B2BTransSession(AmSessionAudioConnector* audioBridge)
+  : bridge(audioBridge), ringTone(new AmRingTone(0,2000,4000,440,480))
 {
   std::ostringstream os;
   os << "creating session=" << this << std::endl;
@@ -32,30 +34,41 @@ void B2BTransSession::addListener(B2BTransSessionListener* listener)
   listeners.push_back(listener);
 }
 
-void B2BTransSession::playRinging(bool manual)
+void B2BTransSession::playRinging()
 {
   std::ostringstream os;
-  os << "playing ringing on session=" << this;
-  os << "; manual (i.e. must manage media processor)=" << manual << std::endl;
+  os << "playing ringing on session=" << this << std::endl;
   DBG("%s",os.str().c_str());
 
   setInOut(NULL,ringTone.get());
-  if(manual)
+  if(getDetached())
   {
-
+    AmMediaProcessor::instance()->addSession(this,getCallgroup());
   }
 }
 
-void B2BTransSession::playStop(bool manual)
+void B2BTransSession::bridgeAudio(AmSessionAudioConnector* audioBridge)
 {
   std::ostringstream os;
-  os << "play stopping on session=" << this;
-  os << "; manual (i.e. must manage media processor)=" << manual << std::endl;
-  DBG("%s",os.str().c_str());
 
-  if(manual)
+  if(audioBridge)
   {
+    os << "bridging audio bridge=" << audioBridge << "; session=" << this << std::endl;
+    DBG("%s",os.str().c_str());
 
+    audioBridge->connectSession(this);
+  }
+  else
+  {
+    os << "unbridging audio bridge=" << audioBridge << "; session=" << this << std::endl;
+    DBG("%s",os.str().c_str());
+    
+    setInOut(NULL,NULL);
+  }
+
+  if(getDetached())
+  {
+    AmMediaProcessor::instance()->addSession(this,getCallgroup());
   }
 }
 
@@ -65,22 +78,20 @@ void B2BTransSession::call(const std::string& callid, const std::string& to,
 
   std::ostringstream os;
   os << "calling callid=" << callid << "; to=" << to << "; from=" << from;
-  os << "; callgroup=" << callgroup << std::endl;
+  os << "; callgroup=" << callgroup << "; this=" << this << std::endl;
   DBG("%s",os.str().c_str());
 
-  DBG("completing dialog parameterization");
+  setCallgroup(callgroup);
+  setNegotiateOnReply(true);//automatically accept audio
   dlg.local_tag = AmSession::getNewId();
   dlg.callid = callid;
   dlg.local_party = from;
   dlg.remote_party = to;
   dlg.remote_uri = getRUri(to);
 
-  DBG("generating sdp offer");
   std::string sdp_offer;
   sdp.genRequest(advertisedIP(),RTPStream()->getLocalPort(),sdp_offer);
-  DBG("%s",sdp_offer.c_str());
 
-  DBG("sending invite");
   dlg.sendRequest("INVITE","application/sdp", sdp_offer);
   start();
   
@@ -89,10 +100,21 @@ void B2BTransSession::call(const std::string& callid, const std::string& to,
     ERROR("DAMN IT! TODO THROW AN EXCEPTION AND CLEAN UP");
     //throw an exception
   }
-  DBG("complete");
 }
 
 void B2BTransSession::onSessionStart(const AmSipRequest& req)
+{
+  std::ostringstream os;
+  os << "started session=" << this << std::endl;
+  DBG("%s",os.str().c_str());
+
+  for(ListenerIter l = listeners.begin(); l != listeners.end(); ++l)
+  {
+    (*l)->onStarted(this);
+  }
+}
+
+void B2BTransSession::onSessionStart(const AmSipReply& reply)
 {
   std::ostringstream os;
   os << "started session=" << this << std::endl;
@@ -114,6 +136,17 @@ void B2BTransSession::onBye(const AmSipRequest& req)
   AmSession::onBye(req);
 }
 
+void B2BTransSession::onSipReply(const AmSipReply& reply, int old_dlg_status, const string& trans_method)
+{
+  if(dlg.getStatus() == AmSipDialog::Connected)
+  {
+    //setNegotiateOnReply(true);//automatically accept audio
+    //setInOut(NULL,ringTone.get());
+  }
+  
+  AmSession::onSipReply(reply,old_dlg_status,trans_method);
+}
+
 /**
  * do not delete AmEvents, even if you created them with a call to new()!
  * it will cause a core dump if you do!
@@ -123,17 +156,36 @@ void B2BTransSession::process(AmEvent* evt)
   B2BDialoutEvent* devt = dynamic_cast< B2BDialoutEvent* >(evt);
   if(devt)
   {
-    DBG("processing B2BDialoutEvent");
+    std::ostringstream os;
+    os << "processing B2BDialoutEvent; this=" << this;
     
     if(devt->event_id == DoConnect)
     {
-      DBG("B2BDialoutEvent is for DoConnect");
+      os << "; DoConnect" << std::endl;
+      DBG("%s",os.str().c_str());
 
       devt->sess->call(getCallID(),dlg.local_party,dlg.remote_party,getCallgroup());
-    }
-    
+    }    
     return;
   }
+
+  B2BBridgeAudioEvent* bevt = dynamic_cast< B2BBridgeAudioEvent* >(evt);
+  if(bevt)
+  {
+    std::ostringstream os;
+    os << "processing B2BBridgeAudioEvent; this=" << this;
+    
+    if(bevt->event_id == DoBridge)
+    {
+      os << "; DoBridge" << std::endl;
+      DBG("%s",os.str().c_str());
+      
+      bridgeAudio(bevt->bridge);
+    }    
+    return;
+  }
+
+
   AmSession::process(evt);
 }
 

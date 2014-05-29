@@ -7,7 +7,9 @@
 
 #include <string>
 #include <map>
+#include <memory>
 
+class AmSessionAudioConnector;
 class B2BTransSession;
 
 class B2BTransDialog : public B2BTransSessionListener
@@ -20,6 +22,8 @@ class B2BTransDialog : public B2BTransSessionListener
   typedef std::map< RoleIDs,B2BTransSession* > SessionsType;
   SessionsType sessions;
   AmMutex sessionsLock;
+
+  std::auto_ptr< AmSessionAudioConnector> bridge;
 
   public:
   
