@@ -107,5 +107,27 @@ const std::string& B2BTransDialog::getID() const
 
 std::string B2BTransDialog::toString()
 {
-  return getID();
+  std::ostringstream os;
+  os << "{";
+
+  sessionsLock.lock();
+
+  SessionsIter i = sessions.find(FROM);
+  if(i != sessions.end())
+  {
+    os << "\"from-tag\":\"" << i->second->dlg.remote_tag << "\",";
+  }
+
+  i = sessions.find(TO);
+  if(i != sessions.end())
+  {
+    os << "\"to-tag\":\"" << i->second->dlg.remote_tag << "\",";
+  }
+  
+  sessionsLock.unlock();
+  
+  os << "\"callid\":\"" << getID() << "\"";
+  os << "}";
+
+  return os.str();
 }

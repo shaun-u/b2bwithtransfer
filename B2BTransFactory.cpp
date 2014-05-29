@@ -125,21 +125,23 @@ const std::string B2BTransFactory::listDialogs() const
   std::ostringstream os;
   //THIS DOES NOT SCALE - use Redis or something similar
 
+  os << "{\"dialogs\":[";
+
   dialogsLock.lock();
 
-  if(dialogs.size() == 0)
+  for(DialogsType::const_iterator d = dialogs.begin(); d != dialogs.end(); ++d)
   {
-    os << "empty" << std::endl;
-  }
-  else
-  {
-    for(DialogsType::const_iterator d = dialogs.begin(); d != dialogs.end(); ++d)
+    os << d->second->toString();
+    if(++d != dialogs.end())
     {
-      os << d->first << " : " << d->second->toString() << std::endl;
+      os << ",";
     }
+     --d;
   }
 
   dialogsLock.unlock();
+
+  os << "]}";
 
   DBG("%s",os.str().c_str());
 
@@ -149,6 +151,7 @@ const std::string B2BTransFactory::listDialogs() const
 std::string B2BTransFactory::flushDeadDialogs()
 {
   std::ostringstream os;
+  //THIS IS RUBBISH - just for PoC
 
   dialogsLock.lock();
 
