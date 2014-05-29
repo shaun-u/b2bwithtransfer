@@ -26,6 +26,16 @@ B2BTransDialog::~B2BTransDialog()
   DBG("%s",os.str().c_str());
 }
   
+void B2BTransDialog::setListener(B2BTransDialogListener* dialogListener)
+{
+  std::ostringstream os;
+  os << "dialog=" << this << "; listener=" << dialogListener << std::endl;
+
+  DBG("%s",os.str().c_str());
+
+  listener = dialogListener;
+}
+
 B2BTransSession* B2BTransDialog::begin()
 {
   return sessions[FROM];
@@ -85,6 +95,9 @@ void B2BTransDialog::onStopped(B2BTransSession* sess)
   sessions.clear();
 
   sessionsLock.unlock();
+
+  if(listener)
+    listener->onTerminated(this);
 }
 
 const std::string& B2BTransDialog::getID() const

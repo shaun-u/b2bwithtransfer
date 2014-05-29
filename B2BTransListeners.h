@@ -2,6 +2,7 @@
 #define _B2BTRANSLISTENERS_H_
 
 class B2BTransSession;
+class B2BTransDialog;
 
 class B2BTransSessionListener
 {
@@ -13,6 +14,7 @@ class B2BTransSessionListener
 class B2BTransDialogListener
 {
   public:
+  virtual void onTerminated(B2BTransDialog* dialog) = 0;
 };
 
 #endif //_B2BTRANSLISTENERS_H_

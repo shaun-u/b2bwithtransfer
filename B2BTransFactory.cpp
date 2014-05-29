@@ -14,6 +14,7 @@ EXPORT_SESSION_FACTORY(B2BTransFactory,MOD_NAME);
 EXPORT_PLUGIN_CLASS_FACTORY(B2BTransFactory,MOD_NAME);
 
 B2BTransFactory::DialogsType B2BTransFactory::dialogs;
+B2BTransFactory::DeadDialogsType B2BTransFactory::deadDialogs;
 AmMutex B2BTransFactory::dialogsLock;
 
 B2BTransFactory::B2BTransFactory(const std::string& applicationName)
@@ -25,11 +26,20 @@ B2BTransFactory::B2BTransFactory(const std::string& applicationName)
   DBG("%s",os.str().c_str());
 }
 
+B2BTransFactory::~B2BTransFactory()
+{
+  std::ostringstream os;
+  os << "de-constructing factory instance";
+  os << "; this=" << this << std::endl;
+  DBG("%s",os.str().c_str());
+}
+
 int B2BTransFactory::onLoad()
 {
   std::ostringstream os;
   os << "loaded this=" << this << std::endl;
   DBG("%s",os.str().c_str());
+
   return 0;
 }
 
@@ -41,6 +51,7 @@ AmSession* B2BTransFactory::onInvite(const AmSipRequest& req)
   os << "to=" << req.to << "; ";
   
   std::auto_ptr< B2BTransDialog > dialog(new B2BTransDialog(req.callid));
+  dialog->setListener(this);
 
   os << "dialog=" << dialog.get() << "; ";
   os << "this=" << this << std::endl;
@@ -50,7 +61,7 @@ AmSession* B2BTransFactory::onInvite(const AmSipRequest& req)
   dialogsLock.lock();
 
   dialogs[dialog->getID()] = dialog.get();
-  
+
   dialogsLock.unlock();
 
   return dialog.release()->begin();
@@ -84,12 +95,37 @@ void B2BTransFactory::invoke(const string& method, const AmArg& args, AmArg& ret
   {
     ret.push(listDialogs().c_str());
   }
+  else if(method == "flushdead")
+  {
+    ret.push(flushDeadDialogs().c_str());
+  }
+}
+
+void B2BTransFactory::onTerminated(B2BTransDialog* dialog)
+{
+  std::ostringstream os;
+  os << "this=" << this << "; dialog=" << dialog;
+
+  dialogsLock.lock();
+  
+  if(dialogs.erase(dialog->getID()) > 0)
+    os << "; found and erased dialog";
+  
+  deadDialogs.push_back(dialog);
+
+  dialogsLock.unlock();
+
+  os << "; dialog set aside for deletion" << std::endl;
+
+  DBG("%s",os.str().c_str());
 }
 
 const std::string B2BTransFactory::listDialogs() const
 {
   std::ostringstream os;
-  //THIS DOES NOT SCALE; NOR IS IT THREAD SAFE
+  //THIS DOES NOT SCALE - use Redis or something similar
+
+  dialogsLock.lock();
 
   if(dialogs.size() == 0)
   {
@@ -102,6 +138,30 @@ const std::string B2BTransFactory::listDialogs() const
       os << d->first << " : " << d->second->toString() << std::endl;
     }
   }
+
+  dialogsLock.unlock();
+
+  DBG("%s",os.str().c_str());
+
+  return os.str();
+}
+
+std::string B2BTransFactory::flushDeadDialogs()
+{
+  std::ostringstream os;
+
+  dialogsLock.lock();
+
+  os << "flushed " << deadDialogs.size() << " dialogs" << std::endl;
+
+  for(DeadDialogsIter d = deadDialogs.begin(); d != deadDialogs.end(); ++d)
+  {
+    delete *d;
+  }
+  
+  deadDialogs.clear();
+
+  dialogsLock.unlock();
 
   DBG("%s",os.str().c_str());
 

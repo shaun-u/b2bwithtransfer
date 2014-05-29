@@ -11,10 +11,12 @@
 
 class AmSessionAudioConnector;
 class B2BTransSession;
+class B2BTransDialogListener;
 
 class B2BTransDialog : public B2BTransSessionListener
 {
   const std::string dialogID;
+  B2BTransDialogListener* listener;
 
   typedef enum {FROM,TO,TRANS }RoleIDs;
 
@@ -25,12 +27,13 @@ class B2BTransDialog : public B2BTransSessionListener
   AmMutex sessionsLock;
 
   std::auto_ptr< AmSessionAudioConnector> bridge;
-
+  
   public:
   
   B2BTransDialog(const std::string& id);
   virtual ~B2BTransDialog();
 
+  void setListener(B2BTransDialogListener* dialogListener);
   B2BTransSession* begin();
 
   void onStarted(B2BTransSession* sess);
