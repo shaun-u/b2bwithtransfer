@@ -2,6 +2,7 @@
 #include "B2BTransDialog.h"
 #include "B2BTransSession.h"
 
+#include "AmUriParser.h"
 #include "log.h"
 
 #include <sstream>
@@ -83,13 +84,17 @@ void B2BTransFactory::invoke(const string& method, const AmArg& args, AmArg& ret
 
   os << "method=" << method << std::endl;
   os << "args size=" << argv.size() << std::endl;
-  std::copy(argv.begin(),argv.end(),std::ostream_iterator< std::string >(os,"\n"));
+  std::copy(argv.begin(),argv.end(),std::ostream_iterator< std::string >(os,";"));
 
   DBG("%s",os.str().c_str());
 
-  if(method == "test")
+  if(method == "transfer")
   {
-    ret.push(os.str().c_str());
+    std::vector< std::string > params(args.asStringVector());
+    if(params.size() != 3)
+      ret.push("incorrect params: callid local-tag dest-uri expected");
+    else
+      ret.push(transfer(params[0],params[1],params[2]).c_str());
   }
   else if(method == "list")
   {
@@ -98,6 +103,15 @@ void B2BTransFactory::invoke(const string& method, const AmArg& args, AmArg& ret
   else if(method == "flushdead")
   {
     ret.push(flushDeadDialogs().c_str());
+  }
+  else if(method == "test")
+  {
+    ret.push(os.str().c_str());
+  }
+  else
+  {
+    ret.push("di(\"b2bwithtrans\" \"transfer\" \"callid\" \"local-tag\" \"dest-uri\")" \
+      "; di(\"b2bwithtrans\" \"list\"); di(\"b2bwithtrans\" \"flushdead\")");
   }
 }
 
@@ -118,6 +132,75 @@ void B2BTransFactory::onTerminated(B2BTransDialog* dialog)
   os << "; dialog set aside for deletion" << std::endl;
 
   DBG("%s",os.str().c_str());
+}
+
+std::string B2BTransFactory::transfer(
+    const std::string& callid,const std::string& localtag,const std::string& desturi)
+{
+  std::ostringstream os,ret;
+  os << "callid=" << callid << "; localtag=" << localtag;
+  os << "; desturi=" << desturi << "; this=" << this << std::endl;
+  DBG("%s",os.str().c_str());
+
+  AmUriParser p;
+  p.uri = desturi;
+  p.parse_uri();
+  p.dump();
+
+  bool valid = true;
+
+  if(desturi.find("sip:") == std::string::npos)
+  {
+    ret << "invalid desturi=" << desturi << ": must be 'sip:'";
+    valid = false;
+  }
+  if(p.uri_user.empty() || p.uri_host.empty())
+  {
+    ret << "invalid desturi=" << desturi << ": uri must contain user and host parts";
+    valid = false;
+  }
+  if(!p.display_name.empty())
+  {
+    ret << "invalid desturi=" << desturi << ": exclude display-name=" << p.display_name;
+    valid = false;
+  }
+  if(!p.uri_headers.empty())
+  {
+    ret << "invalid desturi=" << desturi << ": exclude uri-headers=" << p.uri_headers;
+    valid = false;
+  }
+  if(!p.uri_param.empty())
+  {
+    ret << "invalid desturi=" << desturi << ": exclude  uri-param=" << p.uri_param;
+    valid = false;
+  }
+  
+  if(valid)
+  {
+    dialogsLock.lock();
+
+    DialogsIter t = dialogs.find(callid);
+    if(t != dialogs.end())
+    {
+      if(t->second->isTagValid(localtag))
+      {
+	t->second->transfer(localtag, desturi);
+	ret << "ok";
+      }
+      else
+      {
+	ret << "invalid localtag=" << localtag;
+      }
+    }
+    else
+    {
+      ret << "invalid callid=" << callid;
+    }
+
+    dialogsLock.unlock();
+  }
+
+  return ret.str();
 }
 
 const std::string B2BTransFactory::listDialogs() const

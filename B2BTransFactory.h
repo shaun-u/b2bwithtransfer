@@ -45,6 +45,8 @@ class B2BTransFactory :
   void onTerminated(B2BTransDialog* dialog);
 
   private:
+  std::string transfer(
+    const std::string& callid,const std::string& localtag,const std::string& desturi);
   const std::string listDialogs() const;
   std::string flushDeadDialogs();  
 };

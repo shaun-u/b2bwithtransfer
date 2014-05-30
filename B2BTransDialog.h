@@ -36,11 +36,13 @@ class B2BTransDialog : public B2BTransSessionListener
   void setListener(B2BTransDialogListener* dialogListener);
   B2BTransSession* begin();
 
+  void transfer(const std::string& agenttag, const std::string& desturi);
+
   void onStarted(B2BTransSession* sess);
   void onStopped(B2BTransSession* sess);
 
   const std::string& getID() const;
-
+  bool isTagValid(const std::string& tag);
   std::string toString();
 
 };

@@ -41,6 +41,11 @@ B2BTransSession* B2BTransDialog::begin()
   return sessions[FROM];
 }
 
+void B2BTransDialog::transfer(const std::string& agenttag, const std::string& desturi)
+{
+  //TODO
+}
+
 void B2BTransDialog::onStarted(B2BTransSession* sess)
 {
   std::ostringstream os;
@@ -103,6 +108,11 @@ void B2BTransDialog::onStopped(B2BTransSession* sess)
 const std::string& B2BTransDialog::getID() const
 {
   return dialogID;
+}
+
+bool B2BTransDialog::isTagValid(const std::string& tag)
+{
+  return true;//TODO
 }
 
 std::string B2BTransDialog::toString()
