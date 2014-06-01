@@ -41,6 +41,7 @@ class B2BTransSession : public AmSession
   void onSessionStart(const AmSipRequest& req);
   void onSessionStart(const AmSipReply& reply);
   void onBye(const AmSipRequest& req);
+  void onOutboundCallFailed(const AmSipReply& reply);
   void process(AmEvent* evt);
   void onAudioEvent(AmAudioEvent* audio_ev);
 

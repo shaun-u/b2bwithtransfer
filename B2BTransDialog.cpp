@@ -144,27 +144,60 @@ void B2BTransDialog::onStopped(B2BTransSession* sess)
   std::ostringstream os;
   os << "onStopped sess=" << sess;
   os << "; dialog=" << this;
-  os << "; terminating all sessions" << std::endl;
-  DBG("%s",os.str().c_str());
   
   sessionsLock.lock();
   
-  for(SessionsIter s = sessions.begin(); s != sessions.end(); ++s)
+  if(sessions.size() == 2)
   {
-    s->second->unbridgeAudio(bridge.get());
+    os << "; normal call termination; terminating other session" << std::endl;
+    DBG("%s",os.str().c_str());
 
-    if(s->second == sess)
-      continue;
+    for(SessionsIter s = sessions.begin(); s != sessions.end(); ++s)
+    {
+      s->second->unbridgeAudio(bridge.get());
+
+      if(s->second == sess)
+	continue;
     
-    s->second->postEvent(/*give ownership*/new B2BTerminateEvent());
+      s->second->postEvent(/*give ownership*/new B2BTerminateEvent());
+    }
+    
+    sessions.clear();
+  
+    sessionsLock.unlock();
+
+    if(listener)
+      listener->onTerminated(this);
+
+    return;
   }
 
-  sessions.clear();
+  if(sessions.size() == 3)
+  {
+    //transfer destination failed?
+    SessionsIter trans = sessions.find(TRANS);
+    if(trans != sessions.end() && trans->second == sess)
+    {
+      os << "; transfer detination call failed; reconnecting existing sessions" << std::endl;
+      DBG("%s",os.str().c_str());
+      sessions.erase(TRANS);
+      //TODO redo as loop, probably at end of all cases...
+      sessions[FROM]->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
+      sessions[TO]->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
+    }
 
+    //TODO if transferrer hangs up -> continue like blind transfer
+
+
+
+    sessionsLock.unlock();
+
+    return;
+  }
+
+  //else
   sessionsLock.unlock();
 
-  if(listener)
-    listener->onTerminated(this);
 }
 
 const std::string& B2BTransDialog::getID() const

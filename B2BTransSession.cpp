@@ -180,6 +180,21 @@ void B2BTransSession::onBye(const AmSipRequest& req)
   AmSession::onBye(req);
 }
 
+void B2BTransSession::onOutboundCallFailed(const AmSipReply& reply)
+{
+  std::ostringstream os;
+  os << "outbound call failed; session=" << this;
+  DBG("%s",os.str().c_str());
+
+  for(ListenerIter l = listeners.begin(); l != listeners.end(); ++l)
+  {
+    (*l)->onStopped(this);
+  }
+
+  //AmSession is stopped in superclass
+  AmSession::onOutboundCallFailed(reply);
+}
+
 /**
  * do not delete AmEvents, even if you created them with a call to new()!
  * it will cause a core dump if you do!
