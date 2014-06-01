@@ -80,7 +80,7 @@ void B2BTransDialog::transfer(const std::string& agenttag, const std::string& de
   f->second->unbridgeAudio(bridge.get());
   t->second->playRinging();
   f->second->playRinging();
-  
+
   transferree->second->postEvent(
     /*give ownership*/new B2BTransferEvent(transLeg.release(),desturi));
 }
@@ -151,6 +151,8 @@ void B2BTransDialog::onStopped(B2BTransSession* sess)
   
   for(SessionsIter s = sessions.begin(); s != sessions.end(); ++s)
   {
+    s->second->unbridgeAudio(bridge.get());
+
     if(s->second == sess)
       continue;
     

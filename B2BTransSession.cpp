@@ -48,7 +48,7 @@ void B2BTransSession::playRinging()
   DBG("%s",os.str().c_str());
 
   setInOut(NULL,ringTone.get());
-  if(getDetached())
+  //if(getDetached())
   {
     AmMediaProcessor::instance()->addSession(this,getCallgroup());
   }
@@ -60,11 +60,8 @@ void B2BTransSession::playStop()
   os << "play stop on session=" << this << std::endl;
   DBG("%s",os.str().c_str());
 
+  AmMediaProcessor::instance()->removeSession(this);
   setInOut(NULL,NULL);
-  if(!getDetached())
-  {
-    AmMediaProcessor::instance()->removeSession(this);
-  }
 }
 
 void B2BTransSession::playTransferInProgress()
@@ -96,10 +93,7 @@ void B2BTransSession::bridgeAudio(AmSessionAudioConnector* audioBridge)
     return;  
   }
 
-  if(getDetached())
-  {
-    AmMediaProcessor::instance()->addSession(this,getCallgroup());
-  }
+  AmMediaProcessor::instance()->addSession(this,getCallgroup());
 }
 
 void B2BTransSession::unbridgeAudio(AmSessionAudioConnector* audioBridge)
@@ -107,6 +101,8 @@ void B2BTransSession::unbridgeAudio(AmSessionAudioConnector* audioBridge)
   std::ostringstream os;
   os << "unbridging audio bridge=" << audioBridge << "; session=" << this << std::endl;
   DBG("%s",os.str().c_str());
+
+  AmMediaProcessor::instance()->removeSession(this);
 
   if(audioBridge)
   {
@@ -119,11 +115,6 @@ void B2BTransSession::unbridgeAudio(AmSessionAudioConnector* audioBridge)
   }
 
   setInOut(NULL,NULL);
-
-  if(!getDetached())
-  {
-    AmMediaProcessor::instance()->removeSession(this);
-  }
 }
 
 void B2BTransSession::call(const std::string& callid, const std::string& to,
