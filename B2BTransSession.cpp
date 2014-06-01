@@ -60,8 +60,11 @@ void B2BTransSession::playStop()
   os << "play stop on session=" << this << std::endl;
   DBG("%s",os.str().c_str());
 
-  AmMediaProcessor::instance()->removeSession(this);
   setInOut(NULL,NULL);
+  if(!getDetached())
+  {
+    AmMediaProcessor::instance()->removeSession(this);
+  }
 }
 
 void B2BTransSession::playTransferInProgress()
@@ -115,9 +118,11 @@ void B2BTransSession::unbridgeAudio(AmSessionAudioConnector* audioBridge)
     return;  
   }
 
-  if(getDetached())
+  setInOut(NULL,NULL);
+
+  if(!getDetached())
   {
-    AmMediaProcessor::instance()->addSession(this,getCallgroup());
+    AmMediaProcessor::instance()->removeSession(this);
   }
 }
 
@@ -233,12 +238,12 @@ void B2BTransSession::process(AmEvent* evt)
       os << "; DoTerminate" << std::endl;
       DBG("%s",os.str().c_str());
       
+      setInOut(NULL,NULL);
+
       if(!getDetached())
       {
 	AmMediaProcessor::instance()->removeSession(this);
       }
-
-      setInOut(NULL,NULL);
 
       if(dlg.getStatus() == AmSipDialog::Connected)
 	dlg.bye();
