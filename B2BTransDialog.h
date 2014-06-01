@@ -18,16 +18,18 @@ class B2BTransDialog : public B2BTransSessionListener
   const std::string dialogID;
   B2BTransDialogListener* listener;
 
-  typedef enum {FROM,TO,TRANS }RoleIDs;
+  typedef enum {FROM,TO,TRANS,END }RoleIDs;
 
   //WHO MANAGES THE LIFECYCLE OF AMSESSIONS?
   typedef std::map< RoleIDs,B2BTransSession* > SessionsType;
   typedef SessionsType::iterator SessionsIter;
   SessionsType sessions;
+  //SessionsIter transferrer;
+  RoleIDs transferrer;
   AmMutex sessionsLock;
 
   std::auto_ptr< AmSessionAudioConnector> bridge;
-  
+
   public:
   
   B2BTransDialog(const std::string& id);

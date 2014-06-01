@@ -2,6 +2,7 @@
 #include "B2BTransListeners.h"
 
 #include "AmRingTone.h"
+#include "AmAudioFile.h"
 #include "AmUriParser.h"
 #include "AmSessionContainer.h"
 #include "AmMediaProcessor.h"
@@ -11,11 +12,15 @@
 #include <sstream>
 
 B2BTransSession::B2BTransSession()
-  : ringTone(new AmRingTone(0,2000,4000,440,480))
+  : ringTone(new AmRingTone(0,2000,4000,440,480)),
+    transferInProgress(new AmAudioFile())
 {
   std::ostringstream os;
   os << "creating session=" << this << std::endl;
   DBG("%s",os.str().c_str());
+
+  transferInProgress->open(
+    "/usr/local/lib/sems/audio/b2bwithtrans/transfer_inprogress.wav",AmAudioFile::Read);
 }
 
 B2BTransSession::~B2BTransSession()
@@ -23,6 +28,8 @@ B2BTransSession::~B2BTransSession()
   std::ostringstream os;
   os << "destroying session=" << this << std::endl;
   DBG("%s",os.str().c_str());
+
+  transferInProgress->close();
 }
 
 void B2BTransSession::addListener(B2BTransSessionListener* listener)
@@ -47,23 +54,65 @@ void B2BTransSession::playRinging()
   }
 }
 
+void B2BTransSession::playStop()
+{
+  std::ostringstream os;
+  os << "play stop on session=" << this << std::endl;
+  DBG("%s",os.str().c_str());
+
+  AmMediaProcessor::instance()->removeSession(this);
+  setInOut(NULL,NULL);
+}
+
+void B2BTransSession::playTransferInProgress()
+{
+  std::ostringstream os;
+  os << "playing transfer in progress on session=" << this << std::endl;
+  DBG("%s",os.str().c_str());
+
+  setInOut(NULL,transferInProgress.get());
+  if(getDetached())
+  {
+    AmMediaProcessor::instance()->addSession(this,getCallgroup());
+  }
+}
+
 void B2BTransSession::bridgeAudio(AmSessionAudioConnector* audioBridge)
 {
   std::ostringstream os;
+  os << "bridging audio bridge=" << audioBridge << "; session=" << this << std::endl;
+  DBG("%s",os.str().c_str());
 
   if(audioBridge)
   {
-    os << "bridging audio bridge=" << audioBridge << "; session=" << this << std::endl;
-    DBG("%s",os.str().c_str());
-
     audioBridge->connectSession(this);
   }
   else
   {
-    os << "unbridging audio bridge=" << audioBridge << "; session=" << this << std::endl;
-    DBG("%s",os.str().c_str());
-    
-    setInOut(NULL,NULL);
+    ERROR("%s","audioBridge MUST not be NULL");
+    return;  
+  }
+
+  if(getDetached())
+  {
+    AmMediaProcessor::instance()->addSession(this,getCallgroup());
+  }
+}
+
+void B2BTransSession::unbridgeAudio(AmSessionAudioConnector* audioBridge)
+{
+  std::ostringstream os;
+  os << "unbridging audio bridge=" << audioBridge << "; session=" << this << std::endl;
+  DBG("%s",os.str().c_str());
+
+  if(audioBridge)
+  {
+    audioBridge->disconnectSession(this);
+  }
+  else
+  {
+    ERROR("%s","audioBridge MUST not be NULL");
+    return;  
   }
 
   if(getDetached())
@@ -197,7 +246,52 @@ void B2BTransSession::process(AmEvent* evt)
     }    
     return;
   }
+
+  B2BTransferEvent* trevt = dynamic_cast< B2BTransferEvent* >(evt);
+  if(trevt)
+  {
+    std::ostringstream os;
+    os << "processing B2BTransferEvent; this=" << this;
+    if(trevt->event_id == DoTransfer)
+    {
+      os << "; Do Transfer from=" << dlg.remote_uri;
+      os << "; to=" << trevt->uri;
+      DBG("%s",os.str().c_str());
+      
+      trevt->sess->call(getCallID(),trevt->uri,dlg.remote_party,getCallgroup());
+    }
+    return;
+  }
+  
+  B2BFilePlayedEvent* fpevt = dynamic_cast< B2BFilePlayedEvent* >(evt);
+  if(fpevt)
+  {
+    std::ostringstream os;
+    os << "processing B2BFilePlayedEvent; this=" << this;
+    DBG("%s",os.str().c_str());
+
+    playRinging();
+
+    return;
+  }
+
   AmSession::process(evt);
+}
+
+void B2BTransSession::onAudioEvent(AmAudioEvent* audio_ev)
+{
+  std::ostringstream os;
+  os << "transfer-in-progress message complete, playing ringing; event_id=" << audio_ev->event_id;
+  os << ", this=" << this << std::endl;
+  DBG("%s",os.str().c_str());
+
+  //transferInProgress->rewind();
+  //AmMediaProcessor::instance()->removeSession(this);
+  //playRinging();
+  //postEvent(new B2BFilePlayedEvent()); 
+
+  //For the moment, defer to default behaviour TODO
+  AmSession::onAudioEvent(audio_ev);
 }
 
 std::string B2BTransSession::getRUri(const std::string& uri)

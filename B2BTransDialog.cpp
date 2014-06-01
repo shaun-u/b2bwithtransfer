@@ -8,7 +8,7 @@
 #include <sstream>
 
 B2BTransDialog::B2BTransDialog(const std::string& id)
-  : dialogID(id), bridge(new AmSessionAudioConnector())
+  : dialogID(id), bridge(new AmSessionAudioConnector()), transferrer(END)
 {
   std::ostringstream os;
   os << "created dialog=" << this << "; dialogID=" << id << std::endl;
@@ -16,7 +16,7 @@ B2BTransDialog::B2BTransDialog(const std::string& id)
 
   std::auto_ptr< B2BTransSession > session(new B2BTransSession());
   session->addListener(this);
-  sessions[FROM] = session.release();  
+  sessions[FROM] = session.release(); 
 }
 
 B2BTransDialog::~B2BTransDialog()
@@ -43,7 +43,46 @@ B2BTransSession* B2BTransDialog::begin()
 
 void B2BTransDialog::transfer(const std::string& agenttag, const std::string& desturi)
 {
-  //TODO
+  std::ostringstream os;
+  os << "starting transfer: desturi=" << desturi;
+  os << "; transferrer agenttag=" << agenttag;
+  
+  std::auto_ptr< B2BTransSession > transLeg(new B2BTransSession());
+  transLeg->addListener(this);
+  sessions[TRANS] = transLeg.get();  
+  
+  SessionsIter f = sessions.find(FROM), t = sessions.find(TO), transferree = sessions.end();
+  if(f != sessions.end() && t != sessions.end())
+  {
+    if(t->second->dlg.remote_tag == agenttag)
+    {
+      os << " - matching: " << t->second->dlg.remote_uri;
+      transferrer = t->first;
+      transferree = f;
+    }
+    else if(f->second->dlg.remote_tag == agenttag)
+    {
+      os << " - matching: " << f->second->dlg.remote_uri;
+      transferrer = f->first;
+      transferree = t;
+    }
+    else
+    {
+      os << " - no matching session found!" << std::endl;
+      ERROR("%s",os.str().c_str());
+      return;
+    }
+  }
+
+  DBG("%s",os.str().c_str());
+
+  t->second->unbridgeAudio(bridge.get());
+  f->second->unbridgeAudio(bridge.get());
+  t->second->playRinging();
+  f->second->playRinging();
+  
+  transferree->second->postEvent(
+    /*give ownership*/new B2BTransferEvent(transLeg.release(),desturi));
 }
 
 void B2BTransDialog::onStarted(B2BTransSession* sess)
@@ -74,6 +113,27 @@ void B2BTransDialog::onStarted(B2BTransSession* sess)
 
     bridge->connectSession(sess);
     sessions[FROM]->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
+  }
+  else if(sessions.size() == 3 && sessions[TRANS] == sess)
+  {
+    os << "transfer destination leg connected; bridge audio and bye transferrer" << std::endl;
+    DBG("%s",os.str().c_str());
+
+    sessions.erase(TRANS);
+    B2BTransSession* oldTransferrer = sessions[transferrer];
+    sessions.erase(transferrer);
+
+    B2BTransSession* newFrom = sessions.begin()->second;
+    sessions.clear();
+
+    sessions[FROM] = newFrom;
+    sessions[TO] = sess;
+
+    oldTransferrer->playStop();
+    newFrom->playStop();
+    sess->bridgeAudio(bridge.get());
+    sessions[FROM]->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
+    oldTransferrer->postEvent(/*give ownership*/new B2BTerminateEvent()); 
   }
   
   sessionsLock.unlock();
