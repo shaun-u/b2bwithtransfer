@@ -181,18 +181,49 @@ void B2BTransDialog::onStopped(B2BTransSession* sess)
       os << "; transfer detination call failed; reconnecting existing sessions" << std::endl;
       DBG("%s",os.str().c_str());
       sessions.erase(TRANS);
-      //TODO redo as loop, probably at end of all cases...
-      sessions[FROM]->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
-      sessions[TO]->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
+      for(SessionsIter s = sessions.begin(); s != sessions.end(); ++s)
+      {
+	s->second->postEvent(/*give ownership*/new B2BBridgeAudioEvent(bridge.get()));
+      }
+    
+      sessionsLock.unlock();
+
+      return;
     }
 
-    //TODO if transferrer hangs up -> continue like blind transfer
+    SessionsIter from = sessions.find(FROM);
+    SessionsIter to = sessions.find(TO);
+    if((from != sessions.end() && from->second == sess) ||
+      (to != sessions.end() && to->second == sess))
+    {
+      //if transferrer hangs up -> continue like blind transfer
+      os << "; 'to' or 'from' caller has disconnected;";
+      os << "; continuing to connect remaining leg with transfer destination";
+      os << " (like blind transfer)" << std::endl;
+      DBG("%s",os.str().c_str());
 
+      //Stop ringing
+      sess->playStop();
 
+      //Note: TRANS leg must take TO position 
+      //in map for onStarted() to behave correctly
+      if(to->second == sess)
+      {
+	sess->playStop();
+	sessions[TO] = sessions[TRANS];
+	sessions.erase(TRANS);
+      }
+      else
+      {
+	sessions[FROM] = sessions[TO];
+	sessions[TO] = sessions[TRANS];
+	sessions.erase(TRANS);
+      }
+    
+      sessionsLock.unlock();
 
-    sessionsLock.unlock();
-
-    return;
+      return;
+    }
   }
 
   //else
