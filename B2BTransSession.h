@@ -6,15 +6,15 @@
 #include <memory>
 
 class AmRingTone;
-class AmAudioFile;
+//class AmAudioFile;
 class AmSessionAudioConnector;
 class B2BTransSessionListener;
 
 class B2BTransSession : public AmSession
 {
   std::auto_ptr< AmRingTone > ringTone;
-  std::auto_ptr< AmAudioFile > transferInProgress;
-  std::auto_ptr< AmAudioFile > transferComplete;
+  //std::auto_ptr< AmAudioFile > transferInProgress;
+  //std::auto_ptr< AmAudioFile > transferComplete;
 
   typedef std::vector< B2BTransSessionListener* > ListenerType;
   ListenerType listeners;
@@ -29,7 +29,7 @@ class B2BTransSession : public AmSession
 
   void playRinging();
   void playStop();
-  void playTransferInProgress();
+  //void playTransferInProgress();
   void bridgeAudio(AmSessionAudioConnector* audioBridge);
   void unbridgeAudio(AmSessionAudioConnector* audioBridge);
 
@@ -76,10 +76,10 @@ struct B2BBridgeAudioEvent : public AmEvent
   B2BBridgeAudioEvent(AmSessionAudioConnector* audioBridge) : AmEvent(DoBridge), bridge(audioBridge) {}
 };
 
-struct B2BFilePlayedEvent : public AmEvent
-{
-   B2BFilePlayedEvent() : AmEvent(DoFilePlayed) {}
-};
+//struct B2BFilePlayedEvent : public AmEvent
+//{
+//   B2BFilePlayedEvent() : AmEvent(DoFilePlayed) {}
+//};
 
 struct B2BTerminateEvent : public AmEvent
 {

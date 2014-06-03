@@ -2,7 +2,7 @@
 #include "B2BTransListeners.h"
 
 #include "AmRingTone.h"
-#include "AmAudioFile.h"
+//#include "AmAudioFile.h"
 #include "AmUriParser.h"
 #include "AmSessionContainer.h"
 #include "AmMediaProcessor.h"
@@ -12,15 +12,15 @@
 #include <sstream>
 
 B2BTransSession::B2BTransSession()
-  : ringTone(new AmRingTone(0,2000,4000,440,480)),
-    transferInProgress(new AmAudioFile())
+  : ringTone(new AmRingTone(0,2000,4000,440,480))//,
+    //transferInProgress(new AmAudioFile())
 {
   std::ostringstream os;
   os << "creating session=" << this << std::endl;
   DBG("%s",os.str().c_str());
 
-  transferInProgress->open(
-    "/usr/local/lib/sems/audio/b2bwithtrans/transfer_inprogress.wav",AmAudioFile::Read);
+  //transferInProgress->open(
+  //  "/usr/local/lib/sems/audio/b2bwithtrans/transfer_inprogress.wav",AmAudioFile::Read);
 }
 
 B2BTransSession::~B2BTransSession()
@@ -29,7 +29,7 @@ B2BTransSession::~B2BTransSession()
   os << "destroying session=" << this << std::endl;
   DBG("%s",os.str().c_str());
 
-  transferInProgress->close();
+  //transferInProgress->close();
 }
 
 void B2BTransSession::addListener(B2BTransSessionListener* listener)
@@ -64,18 +64,18 @@ void B2BTransSession::playStop()
   setInOut(NULL,NULL);
 }
 
-void B2BTransSession::playTransferInProgress()
-{
-  std::ostringstream os;
-  os << "playing transfer in progress on session=" << this << std::endl;
-  DBG("%s",os.str().c_str());
-
-  setInOut(NULL,transferInProgress.get());
-  if(getDetached())
-  {
-    AmMediaProcessor::instance()->addSession(this,getCallgroup());
-  }
-}
+//void B2BTransSession::playTransferInProgress()
+//{
+//  std::ostringstream os;
+//  os << "playing transfer in progress on session=" << this << std::endl;
+//  DBG("%s",os.str().c_str());
+//
+//  setInOut(NULL,transferInProgress.get());
+//  if(getDetached())
+//  {
+//    AmMediaProcessor::instance()->addSession(this,getCallgroup());
+//  }
+//}
 
 void B2BTransSession::bridgeAudio(AmSessionAudioConnector* audioBridge)
 {
@@ -274,17 +274,17 @@ void B2BTransSession::process(AmEvent* evt)
     return;
   }
   
-  B2BFilePlayedEvent* fpevt = dynamic_cast< B2BFilePlayedEvent* >(evt);
-  if(fpevt)
-  {
-    std::ostringstream os;
-    os << "processing B2BFilePlayedEvent; this=" << this;
-    DBG("%s",os.str().c_str());
-
-    playRinging();
-
-    return;
-  }
+ // B2BFilePlayedEvent* fpevt = dynamic_cast< B2BFilePlayedEvent* >(evt);
+ // if(fpevt)
+ // {
+ //   std::ostringstream os;
+ //   os << "processing B2BFilePlayedEvent; this=" << this;
+ //   DBG("%s",os.str().c_str());
+ //
+ //   playRinging();
+ //
+ //   return;
+ // }
 
   AmSession::process(evt);
 }
