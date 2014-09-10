@@ -212,7 +212,9 @@ void B2BTransSession::process(AmEvent* evt)
       os << "; DoConnect" << std::endl;
       DBG("%s",os.str().c_str());
 
-      devt->sess->call(getCallID(),dlg.local_party,dlg.remote_party,getCallgroup());
+      devt->sess->call(getCallID(),
+	devt->dstOverride.empty() ? dlg.local_party : devt->dstOverride,
+	  dlg.remote_party,getCallgroup());
     }    
     return;
   }

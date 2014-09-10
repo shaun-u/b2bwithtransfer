@@ -58,7 +58,8 @@ enum B2BDialoutAction
 struct B2BDialoutEvent : public AmEvent
 {
   B2BTransSession* sess;
-  B2BDialoutEvent(B2BTransSession* session) : AmEvent(DoConnect),sess(session) {}
+  std::string dstOverride;
+  B2BDialoutEvent(B2BTransSession* session, const std::string& dst) : AmEvent(DoConnect),sess(session),dstOverride(dst) {}
 };
 
 struct B2BTransferEvent : public AmEvent

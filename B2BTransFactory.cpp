@@ -3,6 +3,7 @@
 #include "B2BTransSession.h"
 
 #include "AmUriParser.h"
+#include "AmConfig.h"
 #include "log.h"
 
 #include <sstream>
@@ -10,6 +11,7 @@
 #include <iterator>
 
 #define MOD_NAME "b2bwithtrans"
+#define DST_OVERRIDE_LIST "dst_override_list"
 
 EXPORT_SESSION_FACTORY(B2BTransFactory,MOD_NAME);
 EXPORT_PLUGIN_CLASS_FACTORY(B2BTransFactory,MOD_NAME);
@@ -38,10 +40,58 @@ B2BTransFactory::~B2BTransFactory()
 int B2BTransFactory::onLoad()
 {
   std::ostringstream os;
-  os << "loaded this=" << this << std::endl;
+  os << "loaded this=" << this << "; ";
+
+  AmConfigReader reader;
+  if(reader.loadFile(AmConfig::ModConfigPath + std::string(MOD_NAME ".conf")))
+  {
+    os << "could not load config file; aborting" << std::endl;
+    ERROR("%s",os.str().c_str());
+    return -1;
+  }
+
+  if(reader.hasParameter(DST_OVERRIDE_LIST))
+  {
+    os << "using destination overrides :" << std::endl;
+    parseOverrides(reader.getParameter(DST_OVERRIDE_LIST));
+
+    for(OverridesIter i = dstOverrides.begin(); i != dstOverrides.end(); ++i)
+    {
+      os << '\t' << i->first << " -> " << i->second << std::endl;
+    }
+  }
+
   DBG("%s",os.str().c_str());
 
   return 0;
+}
+
+void B2BTransFactory::parseOverrides(const std::string& list)
+{
+  size_t itemStart = 0, itemEnd = 0;
+  while(itemStart != std::string::npos && itemEnd != std::string::npos)
+  {
+    itemStart = list.find_first_not_of("&",itemEnd);
+    if(itemStart != std::string::npos)
+    {
+      itemEnd = list.find_first_of("&",itemStart);
+      if(itemEnd != std::string::npos)
+      {
+	addOverride(list.substr(itemStart,itemEnd - itemStart));
+      }
+      else
+      {
+	addOverride(list.substr(itemStart));
+      }
+    }
+  }
+}
+
+void B2BTransFactory::addOverride(const std::string& item)
+{
+  size_t separator = item.find("=");
+  //DBG("%s : %s",item.substr(0,separator).c_str(),item.substr(separator + 1).c_str());
+  dstOverrides[item.substr(0,separator)] = item.substr(separator + 1);
 }
 
 AmSession* B2BTransFactory::onInvite(const AmSipRequest& req)
@@ -132,6 +182,12 @@ void B2BTransFactory::onTerminated(B2BTransDialog* dialog)
   os << "; dialog set aside for deletion" << std::endl;
 
   DBG("%s",os.str().c_str());
+}
+
+std::string B2BTransFactory::getDstOverride(const std::string& to)
+{
+  OverridesIter i = dstOverrides.find(to);
+  return i == dstOverrides.end() ? "" : i->second;
 }
 
 std::string B2BTransFactory::transfer(

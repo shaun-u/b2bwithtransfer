@@ -23,6 +23,12 @@ class B2BTransFactory :
   static DeadDialogsType deadDialogs;
   static AmMutex dialogsLock;
 
+  typedef std::map< std::string, std::string > OverridesType;
+  typedef OverridesType::iterator OverridesIter;
+  OverridesType dstOverrides;
+
+  void parseOverrides(const std::string& list);
+  void addOverride(const std::string& item);
 
   public:
   B2BTransFactory(const std::string& applicationName);
@@ -43,6 +49,8 @@ class B2BTransFactory :
   void invoke(const string& method, const AmArg& args, AmArg& ret);
 
   void onTerminated(B2BTransDialog* dialog);
+
+  std::string getDstOverride(const std::string& to);
 
   private:
   std::string transfer(
