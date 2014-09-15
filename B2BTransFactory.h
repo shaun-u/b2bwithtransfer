@@ -25,7 +25,7 @@ class B2BTransFactory :
 
   typedef std::map< std::string, std::string > OverridesType;
   typedef OverridesType::iterator OverridesIter;
-  OverridesType dstOverrides;
+  static OverridesType dstOverrides;
 
   void parseOverrides(const std::string& list);
   void addOverride(const std::string& item);

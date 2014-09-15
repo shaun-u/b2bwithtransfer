@@ -19,6 +19,7 @@ EXPORT_PLUGIN_CLASS_FACTORY(B2BTransFactory,MOD_NAME);
 B2BTransFactory::DialogsType B2BTransFactory::dialogs;
 B2BTransFactory::DeadDialogsType B2BTransFactory::deadDialogs;
 AmMutex B2BTransFactory::dialogsLock;
+B2BTransFactory::OverridesType B2BTransFactory::dstOverrides;
 
 B2BTransFactory::B2BTransFactory(const std::string& applicationName)
   : AmSessionFactory(applicationName), AmDynInvokeFactory(applicationName)
@@ -186,7 +187,14 @@ void B2BTransFactory::onTerminated(B2BTransDialog* dialog)
 
 std::string B2BTransFactory::getDstOverride(const std::string& to)
 {
+  std::ostringstream os;
+  os << "overrides : size=" << dstOverrides.size() << "; looking for=" << to << "; ";
+  
   OverridesIter i = dstOverrides.find(to);
+
+  os << "found=" << (i == dstOverrides.end() ? "no match" : i->second) << std::endl;
+  DBG("%s", os.str().c_str());
+
   return i == dstOverrides.end() ? "" : i->second;
 }
 

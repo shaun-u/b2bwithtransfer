@@ -105,7 +105,7 @@ void B2BTransDialog::onStarted(B2BTransSession* sess)
     sessions[TO] = toLeg.get();  
     
     sess->postEvent(/*give ownership*/new B2BDialoutEvent(toLeg.release(),
-      listener->getDstOverride(sess->dlg.remote_party)));
+      listener->getDstOverride(sess->dlg.local_uri)));
   }
   else if(sessions.size() == 2 && (sessions[TO] == sess))
   {
